@@ -45,7 +45,7 @@ class PipelineRunner:
         """
         pass
 
-    def _load(self, transformed_df):
+    def _load(self):
         """
         Read the refined data from S3 and load to Postgres database
         """
@@ -67,14 +67,14 @@ def run_pipeline():
     parser.add_argument(
         "--start-date",
         type=valid_date,
-        default=datetime.today(),
-        help="Start date in YYYY-MM-DD format (default: today)",
+        default=datetime.today().date() - timedelta(days=1),
+        help="Start date in YYYY-MM-DD format (default: yesterday)",
     )
     parser.add_argument(
         "--end-date",
         type=valid_date,
-        default=datetime.today(),
-        help="End date in YYYY-MM-DD format (default: today)",
+        default=datetime.today().date() - timedelta(days=1),
+        help="End date in YYYY-MM-DD format (default: yesterday)",
     )
 
     args = parser.parse_args()
@@ -83,7 +83,7 @@ def run_pipeline():
     current_date = args.start_date
     while current_date <= args.end_date:
         logger.info(f"[->] Running the pipeline for {current_date}")
-        pipeline = PipelineRunner(date=current_date)
+        pipeline = PipelineRunner(date=current_date.strftime("%Y-%m-%d"))
         pipeline.run()
         current_date += timedelta(days=1)
 

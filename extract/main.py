@@ -35,7 +35,8 @@ class WeatherFetcher:
                 return response.json()
             else:
                 self.logger.error(
-                    f"[✕] Failed to fetch cities. Status code: {response.status_code}"
+                    f"[✕] Failed to fetch cities. "
+                    f"Status code: {response.status_code}. Response: {response.json()}"
                 )
                 return None
         except Exception as e:
@@ -57,7 +58,8 @@ class WeatherFetcher:
                 return response.json()
             else:
                 self.logger.error(
-                    f"[x] Failed to fetch weather data for {latitude}, {longitude}. Status code: {response.status_code}"
+                    f"[x] Failed to fetch weather data for {latitude}, {longitude}. "
+                    f"Status code: {response.status_code}. Response: {response.json()}"
                 )
                 return None
         except Exception as e:
@@ -103,6 +105,6 @@ class WeatherFetcher:
                         f"[->] Starting upload of {city_name} weather to S3"
                     )
                     self._upload_to_s3(
-                        cities_data,
-                        f"{S3_RAW_PREFIX}/date={self.date}/weather_{city_name}.json",
+                        weather_data,
+                        f"{S3_RAW_PREFIX}/date={self.date}/weather/weather_{city_name}.json",
                     )
