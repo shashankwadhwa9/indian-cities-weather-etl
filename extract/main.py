@@ -1,13 +1,8 @@
 import os
-import json
 import requests
-import boto3
 
-from common.config import CITIES_URL, WEATHER_URL, S3_BUCKET_NAME, S3_RAW_PREFIX
-
-OPENWEATHERMAP_API_KEY = os.environ.get("OPENWEATHERMAP_API_KEY")
-AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
-AWS_ACCESS_SECRET = os.environ.get("AWS_ACCESS_SECRET")
+from common.utils import upload_json_to_s3
+from common.config import TOP_CITIES_TO_TAKE, CITIES_URL, WEATHER_URL, S3_RAW_PREFIX
 
 
 class WeatherFetcher:
@@ -18,14 +13,10 @@ class WeatherFetcher:
         3. Put this raw data on S3
     """
 
-    def __init__(self, logger, date):
+    def __init__(self, logger, date, s3_client):
         self.logger = logger
         self.date = date
-        self.s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=AWS_ACCESS_KEY,
-            aws_secret_access_key=AWS_ACCESS_SECRET,
-        )
+        self.s3_client = s3_client
 
     def _get_cities(self):
         try:
@@ -50,7 +41,7 @@ class WeatherFetcher:
                 "lon": longitude,
                 "date": self.date,
                 "units": "metric",
-                "appid": OPENWEATHERMAP_API_KEY,
+                "appid": os.environ.get("OPENWEATHERMAP_API_KEY"),
             }
 
             response = requests.get(WEATHER_URL, params=params)
@@ -68,15 +59,6 @@ class WeatherFetcher:
             )
             return None
 
-    def _upload_to_s3(self, data, path):
-        try:
-            self.s3_client.put_object(
-                Body=json.dumps(data), Bucket=S3_BUCKET_NAME, Key=path
-            )
-            self.logger.info(f"[✓] Data uploaded to S3 at {path}")
-        except Exception as e:
-            self.logger.error(f"[x] Error uploading data to S3: {str(e)}")
-
     def fetch_raw_data(self):
         """
         This is the main function
@@ -86,11 +68,16 @@ class WeatherFetcher:
         # Get all the cities
         cities_data = self._get_cities()
         if cities_data:
-            self.logger.info("[->] Starting upload of raw cities_data to S3")
+            # Limit to the top "x" cities
+            cities_data = cities_data[:TOP_CITIES_TO_TAKE]
 
+            self.logger.info("[->] Starting upload of raw cities data to S3")
             # Upload cities data to S3
-            self._upload_to_s3(
-                cities_data, f"{S3_RAW_PREFIX}/date={self.date}/city_data.json"
+            upload_json_to_s3(
+                self.s3_client,
+                self.logger,
+                cities_data,
+                f"{S3_RAW_PREFIX}/date={self.date}/city_data.json",
             )
 
             # Get the weather for each city
@@ -104,7 +91,9 @@ class WeatherFetcher:
                     self.logger.info(
                         f"[->] Starting upload of {city_name} weather to S3"
                     )
-                    self._upload_to_s3(
+                    upload_json_to_s3(
+                        self.s3_client,
+                        self.logger,
                         weather_data,
-                        f"{S3_RAW_PREFIX}/date={self.date}/weather/weather_{city_name}.json",
+                        f"{S3_RAW_PREFIX}/date={self.date}/weather/{city_name}.json",
                     )

@@ -7,6 +7,7 @@ import boto3
 
 from common.utils import valid_date
 from extract.main import WeatherFetcher
+from transform.main import WeatherTransformer
 
 OPENWEATHERMAP_API_KEY = os.environ.get("OPENWEATHERMAP_API_KEY")
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
@@ -36,14 +37,19 @@ class PipelineRunner:
         """
         Get the raw weather data and upload to S3
         """
-        fetcher = WeatherFetcher(logger=self.logger, date=self.date)
+        fetcher = WeatherFetcher(
+            logger=self.logger, date=self.date, s3_client=self.s3_client
+        )
         fetcher.fetch_raw_data()
 
     def _transform(self):
         """
         Read the raw weather data, clean it to create refined data and upload to S3
         """
-        pass
+        transformer = WeatherTransformer(
+            logger=self.logger, date=self.date, s3_client=self.s3_client
+        )
+        transformer.create_refined_data()
 
     def _load(self):
         """
@@ -55,7 +61,7 @@ class PipelineRunner:
         """
         Run the ETL pipeline
         """
-        self._extract()
+        # self._extract()
         self._transform()
         self._load()
 
