@@ -50,6 +50,11 @@ class WeatherTransformer:
 
         # Remove the not needed columns
         cities_refined_df = cities_raw_df[["city", "lat", "lng", "country"]]
+
+        # Clean the data (Replace special characters)
+        cities_refined_df["city"] = (
+            cities_refined_df["city"].str.replace("ā", "a").str.replace("ū", "u")
+        )
         cities_refined_df.columns = CITIES_DF_COL_LIST
 
         self.logger.info("[->] Starting upload of refined cities data to S3")

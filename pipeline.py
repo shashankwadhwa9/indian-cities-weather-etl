@@ -67,10 +67,10 @@ class PipelineRunner:
         loader = WeatherLoader(
             logger=self.logger,
             date=self.date,
-            s3_client=self.s3_client,
             sqlalchemy_engine=self.sqlalchemy_engine,
         )
-        loader.load()
+        inserted_data = loader.load()
+        logger.info(inserted_data)
 
     def run(self):
         """
@@ -78,8 +78,7 @@ class PipelineRunner:
         """
         # self._extract()
         # self._transform()
-        inserted_data = self._load()
-        logger.info(inserted_data)
+        self._load()
 
 
 def run_pipeline():

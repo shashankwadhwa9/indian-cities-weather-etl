@@ -57,4 +57,4 @@ def load_df_to_postgres(df, sql, engine):
     # Execute the SQL statement
     with engine.connect() as conn:
         for row in data:
-            conn.execute(text(sql), **row)
+            conn.execute(text(sql), parameters=row)

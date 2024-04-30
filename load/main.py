@@ -1,8 +1,9 @@
 import pandas as pd
+from sqlalchemy import inspect
 
 from .models import Base
 from common.utils import read_parquet_from_s3, load_df_to_postgres
-from common.config import S3_REFINED_PREFIX
+from common.config import S3_BUCKET_NAME, S3_REFINED_PREFIX
 
 
 class WeatherLoader:
@@ -12,17 +13,16 @@ class WeatherLoader:
         2. Fetching the refined weather data from S3 and inserting the data to Postgres
     """
 
-    def __init__(self, logger, date, s3_client, sqlalchemy_engine):
+    def __init__(self, logger, date, sqlalchemy_engine):
         self.logger = logger
         self.date = date
-        self.s3_client = s3_client
         self.sqlalchemy_engine = sqlalchemy_engine
 
     def _create_tables_if_not_exists(self):
         """
         Create the city and weather tables in the database if they are not there
         """
-        existing_tables = self.sqlalchemy_engine.table_names()
+        existing_tables = inspect(self.sqlalchemy_engine).get_table_names()
 
         if "dim_city" not in existing_tables:
             self.logger.info("[->] Creating dim_city table...")
@@ -38,7 +38,7 @@ class WeatherLoader:
         """
         # Get the refined cities data from S3
         cities_df = read_parquet_from_s3(
-            f"{S3_REFINED_PREFIX}/date={self.date}/city_data.parquet"
+            f"s3://{S3_BUCKET_NAME}/{S3_REFINED_PREFIX}/date={self.date}/city_data.parquet"
         )
 
         # Define the SQL statement
@@ -51,7 +51,7 @@ class WeatherLoader:
                 country = EXCLUDED.country;
         """
 
-        load_df_to_postgres(cities_df, sql)
+        load_df_to_postgres(cities_df, sql, self.sqlalchemy_engine)
         self.logger.info("[✓] Inserted city data to Postgres")
 
     def _load_weather_data(self):
@@ -60,7 +60,7 @@ class WeatherLoader:
         """
         # Get the refined cities data from S3
         weather_df = read_parquet_from_s3(
-            f"{S3_REFINED_PREFIX}/date={self.date}/weather_data.parquet"
+            f"s3://{S3_BUCKET_NAME}/{S3_REFINED_PREFIX}/date={self.date}/weather_data.parquet"
         )
 
         # Fetch city_id for each city_name in fct_weather DataFrame
@@ -86,7 +86,7 @@ class WeatherLoader:
                 max_temperature = EXCLUDED.max_temperature;
         """
 
-        load_df_to_postgres(df_fct_weather_with_city_id, sql)
+        load_df_to_postgres(df_fct_weather_with_city_id, sql, self.sqlalchemy_engine)
         self.logger.info("[✓] Inserted weather data to Postgres")
 
     def _get_data(self):
@@ -96,7 +96,8 @@ class WeatherLoader:
         query = f"""
             SELECT *
             FROM fct_weather
-            WHERE date = {self.date}
+            WHERE date = '{self.date}'
+            ;
         """
         output_df = pd.read_sql_query(query, con=self.sqlalchemy_engine)
         return output_df
