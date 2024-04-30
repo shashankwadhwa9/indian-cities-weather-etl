@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import inspect
 
 from .models import Base
-from common.utils import read_parquet_from_s3, load_df_to_postgres
+from common.utils import read_parquet_from_s3
 from common.config import S3_BUCKET_NAME, S3_REFINED_PREFIX
 
 
@@ -41,17 +41,30 @@ class WeatherLoader:
             f"s3://{S3_BUCKET_NAME}/{S3_REFINED_PREFIX}/date={self.date}/city_data.parquet"
         )
 
-        # Define the SQL statement
-        sql = """
-            INSERT INTO dim_city (city_name, latitude, longitude, country)
-            VALUES (:city_name, :latitude, :longitude, :country)
-            ON CONFLICT (city_name) DO UPDATE
-            SET latitude = EXCLUDED.latitude,
-                longitude = EXCLUDED.longitude,
-                country = EXCLUDED.country;
-        """
+        # TODO: move this to common.utils
+        def upsert_to_postgres(table, conn, keys, data_iter):
+            upsert_args = {"constraint": "dim_city_city_name_key"}
+            for data in data_iter:
+                data = {k: data[i] for i, k in enumerate(keys)}
+                upsert_args["set_"] = data
+                from sqlalchemy.dialects.postgresql import insert
+                import sqlalchemy as sa
 
-        load_df_to_postgres(cities_df, sql, self.sqlalchemy_engine)
+                meta = sa.MetaData()
+                meta.bind = self.sqlalchemy_engine
+                meta.reflect(bind=self.sqlalchemy_engine, views=True)
+                insert_stmt = insert(meta.tables[table.name]).values(**data)
+                upsert_stmt = insert_stmt.on_conflict_do_update(**upsert_args)
+                conn.execute(upsert_stmt)
+
+        # load_df_to_postgres(cities_df, sql, self.sqlalchemy_engine)
+        cities_df.to_sql(
+            "dim_city",
+            con=self.sqlalchemy_engine,
+            if_exists="append",
+            method=upsert_to_postgres,
+            index=False,
+        )
         self.logger.info("[✓] Inserted city data to Postgres")
 
     def _load_weather_data(self):
@@ -77,26 +90,40 @@ class WeatherLoader:
         )
         df_fct_weather_with_city_id.drop(columns=["city_name"], inplace=True)
 
-        # Define the SQL statement
-        sql = """
-            INSERT INTO fct_weather (date, city_id, min_temperature, max_temperature)
-            VALUES (:date, :city_id, :min_temperature, :max_temperature)
-            ON CONFLICT (date, city_id) DO UPDATE
-            SET min_temperature = EXCLUDED.min_temperature,
-                max_temperature = EXCLUDED.max_temperature;
-        """
+        # TODO: move this to common.utils
+        def upsert_to_postgres(table, conn, keys, data_iter):
+            upsert_args = {"constraint": "fct_weather_date_city_id_key"}
+            for data in data_iter:
+                data = {k: data[i] for i, k in enumerate(keys)}
+                upsert_args["set_"] = data
+                from sqlalchemy.dialects.postgresql import insert
+                import sqlalchemy as sa
 
-        load_df_to_postgres(df_fct_weather_with_city_id, sql, self.sqlalchemy_engine)
+                meta = sa.MetaData()
+                meta.bind = self.sqlalchemy_engine
+                meta.reflect(bind=self.sqlalchemy_engine, views=True)
+                insert_stmt = insert(meta.tables[table.name]).values(**data)
+                upsert_stmt = insert_stmt.on_conflict_do_update(**upsert_args)
+                conn.execute(upsert_stmt)
+
+        # load_df_to_postgres(cities_df, sql, self.sqlalchemy_engine)
+        df_fct_weather_with_city_id.to_sql(
+            "fct_weather",
+            con=self.sqlalchemy_engine,
+            if_exists="append",
+            method=upsert_to_postgres,
+            index=False,
+        )
+
         self.logger.info("[✓] Inserted weather data to Postgres")
 
     def _get_data(self):
         """
         Read the data of the passed "date" from the Postgres DB
         """
-        query = f"""
+        query = """
             SELECT *
-            FROM fct_weather
-            WHERE date = '{self.date}'
+            FROM dim_city
             ;
         """
         output_df = pd.read_sql_query(query, con=self.sqlalchemy_engine)
