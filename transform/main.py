@@ -102,7 +102,9 @@ class WeatherTransformer:
         weather_raw_df = self._get_raw_weather_data()
 
         # Remove the not needed columns
-        weather_refined_df = weather_raw_df[["date", "city_name", "temperature.max"]]
+        weather_refined_df = weather_raw_df[
+            ["date", "city_name", "temperature.min", "temperature.max"]
+        ]
         weather_refined_df.columns = WEATHER_DF_COL_LIST
 
         self.logger.info("[->] Starting upload of refined weather data to S3")
@@ -116,5 +118,10 @@ class WeatherTransformer:
         )
 
     def create_refined_data(self):
+        """
+        This is the main function
+        """
+        self.logger.info("[->] Starting data refinement")
+
         self._create_cities_refined_data()
         self._create_weather_refined_data()

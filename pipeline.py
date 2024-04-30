@@ -4,14 +4,18 @@ import logging
 import argparse
 from datetime import datetime, timedelta
 import boto3
+from sqlalchemy import create_engine
 
+from common.config import DB_USER, DB_HOST, DB_PORT, DB_NAME
 from common.utils import valid_date
 from extract.main import WeatherFetcher
 from transform.main import WeatherTransformer
+from load.main import WeatherLoader
 
 OPENWEATHERMAP_API_KEY = os.environ.get("OPENWEATHERMAP_API_KEY")
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
 AWS_ACCESS_SECRET = os.environ.get("AWS_ACCESS_SECRET")
+PG_PWD = os.environ.get("PG_PWD")
 
 # Configure logging
 logging.basicConfig(
@@ -26,12 +30,17 @@ class PipelineRunner:
         :param date: Date for which the weather data has to be fetched
         """
         self.logger = logger
+        self.date = date
         self.s3_client = boto3.client(
             "s3",
             aws_access_key_id=AWS_ACCESS_KEY,
             aws_secret_access_key=AWS_ACCESS_SECRET,
         )
-        self.date = date
+
+        # SQLAlchemy engine
+        self.sqlalchemy_engine = create_engine(
+            f"postgresql://{DB_USER}:{PG_PWD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        )
 
     def _extract(self):
         """
@@ -55,15 +64,22 @@ class PipelineRunner:
         """
         Read the refined data from S3 and load to Postgres database
         """
-        pass
+        loader = WeatherLoader(
+            logger=self.logger,
+            date=self.date,
+            s3_client=self.s3_client,
+            sqlalchemy_engine=self.sqlalchemy_engine,
+        )
+        loader.load()
 
     def run(self):
         """
         Run the ETL pipeline
         """
         # self._extract()
-        self._transform()
-        self._load()
+        # self._transform()
+        inserted_data = self._load()
+        logger.info(inserted_data)
 
 
 def run_pipeline():
@@ -105,6 +121,12 @@ if __name__ == "__main__":
     # These are required to put the raw and refined data on S3
     if AWS_ACCESS_KEY is None or AWS_ACCESS_SECRET is None:
         logger.error("[x] AWS credentials not provided.")
+        sys.exit()
+
+    # Check if the Postgres database password environment variable is set
+    # This is required to load the data to the DB
+    if PG_PWD is None:
+        logger.error("[x] Postgres database password not provided.")
         sys.exit()
 
     # Run the pipeline

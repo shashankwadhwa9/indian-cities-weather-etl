@@ -11,4 +11,10 @@ S3_REFINED_PREFIX = "refined"
 
 # Refined dataframe final columns list
 CITIES_DF_COL_LIST = ["city_name", "latitude", "longitude", "country"]
-WEATHER_DF_COL_LIST = ["date", "city_name", "max_temperature"]
+WEATHER_DF_COL_LIST = ["date", "city_name", "min_temperature", "max_temperature"]
+
+# Postgres DB
+DB_USER = "avnadmin"
+DB_HOST = "indian-cities-weather-indian-cities-weather-etl.j.aivencloud.com"
+DB_PORT = "21558"
+DB_NAME = "defaultdb"

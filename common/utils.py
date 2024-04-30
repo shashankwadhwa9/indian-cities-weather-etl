@@ -4,6 +4,7 @@ import argparse
 import json
 import pyarrow as pa
 import pyarrow.parquet as pq
+from sqlalchemy import text
 
 from .config import S3_BUCKET_NAME
 
@@ -37,3 +38,23 @@ def write_df_parquet_to_s3(s3_client, logger, df, path):
     )
 
     logger.info("DataFrame successfully written to S3 in Parquet format")
+
+
+def read_parquet_from_s3(path):
+    # Read Parquet file from S3
+    table = pq.read_table(path)
+
+    # Convert to Pandas DataFrame
+    df = table.to_pandas()
+
+    return df
+
+
+def load_df_to_postgres(df, sql, engine):
+    # Convert df to a dictionary to pass to the insert statement
+    data = df.to_dict(orient="records")
+
+    # Execute the SQL statement
+    with engine.connect() as conn:
+        for row in data:
+            conn.execute(text(sql), **row)
