@@ -109,7 +109,13 @@ class WeatherTransformer:
 
         # Remove the not needed columns
         weather_refined_df = weather_raw_df[
-            ["date", "city_name", "temperature.min", "temperature.max"]
+            [
+                "date",
+                "city_name",
+                "temperature.min",
+                "temperature.max",
+                "precipitation.total",
+            ]
         ]
 
         # Clean the data (Replace special characters)

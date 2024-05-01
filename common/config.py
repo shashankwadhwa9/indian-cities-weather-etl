@@ -11,7 +11,13 @@ S3_REFINED_PREFIX = "refined"
 
 # Refined dataframe final columns list
 CITIES_DF_COL_LIST = ["city_name", "latitude", "longitude", "country"]
-WEATHER_DF_COL_LIST = ["date", "city_name", "min_temperature", "max_temperature"]
+WEATHER_DF_COL_LIST = [
+    "date",
+    "city_name",
+    "min_temperature",
+    "max_temperature",
+    "total_precipitation",
+]
 
 # Postgres DB
 DB_USER = "avnadmin"

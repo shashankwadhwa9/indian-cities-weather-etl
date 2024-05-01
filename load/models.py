@@ -26,6 +26,7 @@ class FctWeather(Base):
     city_id = Column(Integer, ForeignKey("dim_city.city_id"))
     min_temperature = Column(Float)
     max_temperature = Column(Float)
+    total_precipitation = Column(Float)
 
     # Define unique constraint on date and city_id
     __table_args__ = (UniqueConstraint("date", "city_id"),)

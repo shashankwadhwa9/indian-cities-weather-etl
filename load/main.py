@@ -159,7 +159,8 @@ class WeatherLoader:
             SELECT
                 dim_city.city_name,
                 fct_weather.max_temperature,
-                fct_weather.min_temperature
+                fct_weather.min_temperature,
+                fct_weather.total_precipitation
             FROM fct_weather
             INNER JOIN dim_city
                 ON fct_weather.city_id = dim_city.city_id
