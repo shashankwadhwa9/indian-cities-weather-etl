@@ -52,9 +52,10 @@ class WeatherTransformer:
         cities_refined_df = cities_raw_df[["city", "lat", "lng", "country"]]
 
         # Clean the data (Replace special characters)
-        cities_refined_df["city"] = (
+        cities_refined_df.loc[:, "city"] = (
             cities_refined_df["city"].str.replace("ā", "a").str.replace("ū", "u")
         )
+
         cities_refined_df.columns = CITIES_DF_COL_LIST
 
         self.logger.info("[->] Starting upload of refined cities data to S3")
@@ -110,6 +111,12 @@ class WeatherTransformer:
         weather_refined_df = weather_raw_df[
             ["date", "city_name", "temperature.min", "temperature.max"]
         ]
+
+        # Clean the data (Replace special characters)
+        weather_refined_df.loc[:, "city_name"] = (
+            weather_refined_df["city_name"].str.replace("ā", "a").str.replace("ū", "u")
+        )
+
         weather_refined_df.columns = WEATHER_DF_COL_LIST
 
         self.logger.info("[->] Starting upload of refined weather data to S3")
