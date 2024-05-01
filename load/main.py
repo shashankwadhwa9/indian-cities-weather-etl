@@ -148,9 +148,14 @@ class WeatherLoader:
         """
         Read the data of the passed "date" from the Postgres DB
         """
-        self.logger.info(f"Weather report for {self.date} (Sorted hottest -> coldest)")
+        self.logger.info(
+            f"Weather report for {self.date} (Sorted hottest -> coldest by max_temperature)"
+        )
         query = f"""
-            SELECT dim_city.city_name, fct_weather.max_temperature
+            SELECT
+                dim_city.city_name,
+                fct_weather.max_temperature,
+                fct_weather.min_temperature
             FROM fct_weather
             INNER JOIN dim_city
                 ON fct_weather.city_id = dim_city.city_id

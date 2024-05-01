@@ -1,4 +1,4 @@
-TOP_CITIES_TO_TAKE = 4
+TOP_CITIES_TO_TAKE = 10
 
 # Urls
 CITIES_URL = "https://simplemaps.com/static/data/country-cities/in/in.json"
