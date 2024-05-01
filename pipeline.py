@@ -67,6 +67,7 @@ class PipelineRunner:
         loader = WeatherLoader(
             logger=self.logger,
             date=self.date,
+            s3_client=self.s3_client,
             sqlalchemy_engine=self.sqlalchemy_engine,
         )
         inserted_data = loader.load()
@@ -76,8 +77,8 @@ class PipelineRunner:
         """
         Run the ETL pipeline
         """
-        # self._extract()
-        # self._transform()
+        self._extract()
+        self._transform()
         self._load()
 
 

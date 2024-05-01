@@ -3,7 +3,7 @@ from sqlalchemy import inspect
 
 from .models import Base
 from common.utils import read_parquet_from_s3
-from common.config import S3_BUCKET_NAME, S3_REFINED_PREFIX
+from common.config import S3_REFINED_PREFIX
 
 
 class WeatherLoader:
@@ -13,9 +13,10 @@ class WeatherLoader:
         2. Fetching the refined weather data from S3 and inserting the data to Postgres
     """
 
-    def __init__(self, logger, date, sqlalchemy_engine):
+    def __init__(self, logger, date, s3_client, sqlalchemy_engine):
         self.logger = logger
         self.date = date
+        self.s3_client = s3_client
         self.sqlalchemy_engine = sqlalchemy_engine
 
     def _create_tables_if_not_exists(self):
@@ -38,7 +39,9 @@ class WeatherLoader:
         """
         # Get the refined cities data from S3
         cities_df = read_parquet_from_s3(
-            f"s3://{S3_BUCKET_NAME}/{S3_REFINED_PREFIX}/date={self.date}/city_data.parquet"
+            self.s3_client,
+            self.logger,
+            f"{S3_REFINED_PREFIX}/date={self.date}/city_data.parquet",
         )
 
         # TODO: move this to common.utils
@@ -73,7 +76,9 @@ class WeatherLoader:
         """
         # Get the refined cities data from S3
         weather_df = read_parquet_from_s3(
-            f"s3://{S3_BUCKET_NAME}/{S3_REFINED_PREFIX}/date={self.date}/weather_data.parquet"
+            self.s3_client,
+            self.logger,
+            f"{S3_REFINED_PREFIX}/date={self.date}/weather_data.parquet",
         )
 
         # Fetch city_id for each city_name in fct_weather DataFrame
