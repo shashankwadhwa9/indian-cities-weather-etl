@@ -9,7 +9,7 @@ class WeatherFetcher:
     """
     The WeatherFetcher is responsible for:
         1. Getting the top Indian cities data from "simplemaps" API
-        2. For each city, fetch yesterday's weather by calling "OpenWeatherMap" API
+        2. For each city, fetch weather data for the passed date by calling "OpenWeatherMap" API
         3. Put this raw data on S3
     """
 
