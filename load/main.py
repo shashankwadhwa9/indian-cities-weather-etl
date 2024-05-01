@@ -1,7 +1,8 @@
 import pandas as pd
-from sqlalchemy import inspect
+from sqlalchemy.dialects.postgresql import insert
+import sqlalchemy as sa
 
-from .models import Base
+from .models import DimCity, FctWeather
 from common.utils import read_parquet_from_s3
 from common.config import S3_REFINED_PREFIX
 
@@ -23,15 +24,42 @@ class WeatherLoader:
         """
         Create the city and weather tables in the database if they are not there
         """
-        existing_tables = inspect(self.sqlalchemy_engine).get_table_names()
+        meta = sa.MetaData()
+        meta.bind = self.sqlalchemy_engine
+        meta.reflect(bind=self.sqlalchemy_engine, views=True)
 
-        if "dim_city" not in existing_tables:
-            self.logger.info("[->] Creating dim_city table...")
-            Base.metadata.tables["dim_city"].create(self.sqlalchemy_engine)
+        # Get table names from the database
+        existing_tables = meta.tables.keys()
 
-        if "fct_weather" not in existing_tables:
-            self.logger.info("[->] Creating fct_weather table...")
-            Base.metadata.tables["fct_weather"].create(self.sqlalchemy_engine)
+        models = [DimCity, FctWeather]
+        # Loop through each model and compare with existing tables
+        for model in models:
+            table_name = model.__tablename__
+
+            # Check if the table exists in the database
+            if table_name not in existing_tables:
+                # If the table doesn't exist, create it
+                model.__table__.create(self.sqlalchemy_engine)
+
+                self.logger.info(f"[✓] Table '{table_name}' created in the database")
+            else:
+                # If the table exists, compare columns
+                existing_columns = set(meta.tables[table_name].columns.keys())
+                model_columns = set(model.__table__.columns.keys())
+
+                # Find new columns in the model
+                new_columns = model_columns - existing_columns
+
+                # Add new columns to the database
+                for column_name in new_columns:
+                    column = model.__table__.columns[column_name]
+                    column.create(meta.tables[table_name])
+                    self.logger.info(
+                        f"Column '{column_name}' added to the table '{table_name}'"
+                    )
+
+        # Commit changes to the database
+        meta.create_all(self.sqlalchemy_engine)
 
     def _load_cities_data(self):
         """
@@ -50,9 +78,6 @@ class WeatherLoader:
             for data in data_iter:
                 data = {k: data[i] for i, k in enumerate(keys)}
                 upsert_args["set_"] = data
-                from sqlalchemy.dialects.postgresql import insert
-                import sqlalchemy as sa
-
                 meta = sa.MetaData()
                 meta.bind = self.sqlalchemy_engine
                 meta.reflect(bind=self.sqlalchemy_engine, views=True)
@@ -101,9 +126,6 @@ class WeatherLoader:
             for data in data_iter:
                 data = {k: data[i] for i, k in enumerate(keys)}
                 upsert_args["set_"] = data
-                from sqlalchemy.dialects.postgresql import insert
-                import sqlalchemy as sa
-
                 meta = sa.MetaData()
                 meta.bind = self.sqlalchemy_engine
                 meta.reflect(bind=self.sqlalchemy_engine, views=True)
