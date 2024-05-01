@@ -126,9 +126,14 @@ class WeatherLoader:
         """
         Read the data of the passed "date" from the Postgres DB
         """
-        query = """
-            SELECT *
-            FROM dim_city
+        self.logger.info(f"Weather report for {self.date} (Sorted hottest -> coldest)")
+        query = f"""
+            SELECT dim_city.city_name, fct_weather.max_temperature
+            FROM fct_weather
+            INNER JOIN dim_city
+                ON fct_weather.city_id = dim_city.city_id
+            WHERE fct_weather.date = '{self.date}'
+            ORDER BY fct_weather.max_temperature DESC
             ;
         """
         output_df = pd.read_sql_query(query, con=self.sqlalchemy_engine)
