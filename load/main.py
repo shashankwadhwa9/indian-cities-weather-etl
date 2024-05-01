@@ -1,5 +1,6 @@
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql import text
 import sqlalchemy as sa
 
 from .models import DimCity, FctWeather
@@ -53,13 +54,16 @@ class WeatherLoader:
                 # Add new columns to the database
                 for column_name in new_columns:
                     column = model.__table__.columns[column_name]
-                    column.create(meta.tables[table_name])
-                    self.logger.info(
-                        f"Column '{column_name}' added to the table '{table_name}'"
+                    column_type = column.type  # Get the type of the column
+                    alter_query = (
+                        f"ALTER TABLE {table_name} "
+                        f"ADD COLUMN {column_name} {column_type}"
                     )
+                    with self.sqlalchemy_engine.connect() as connection:
+                        connection.execute(text(alter_query))
+                        connection.commit()
 
-        # Commit changes to the database
-        meta.create_all(self.sqlalchemy_engine)
+                    print(f"Column '{column_name}' added to table '{table_name}'.")
 
     def _load_cities_data(self):
         """
