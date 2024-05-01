@@ -3,7 +3,7 @@ A data pipeline to get the weather details of the top Indian cities and load to 
 
 ## Pipeline architecture
 
-![Architecture diagram](assets/architecture_diagram.png)  
+![Architecture diagram](assets/architecture_diagram.jpg)  
 
 
 There are 4 major components in the pipeline:
